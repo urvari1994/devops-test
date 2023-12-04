@@ -1,0 +1,49 @@
+pipeline {
+    agent any
+
+    environment {
+        TF_VAR_your_app_name = "urvapp"
+        TF_VAR_docker_username = "urv
+    }
+
+    stages {
+        stage('Build Docker Image') {
+            steps {
+                script {
+                    docker.build("urv/urvapp:latest")
+                }
+            }
+        }
+
+        stage('Push Docker Image to Registry') {
+            steps {
+                script {
+                    docker.withRegistry('https://registry.hub.docker.com', 'docker-hub-credentials') {
+                        docker.image("urv/urvapp:latest").push()
+                    }
+                }
+            }
+        }
+
+        stage('Terraform Apply') {
+            steps {
+                script {
+                    sh 'terraform init terraform/'
+                    sh 'terraform apply -auto-approve terraform/'
+                }
+            }
+        }
+    }
+
+    post {
+        always {
+            stage('Cleanup') {
+                steps {
+                    script {
+                        sh 'terraform destroy -auto-approve terraform/'
+                    }
+                }
+            }
+        }
+    }
+}
